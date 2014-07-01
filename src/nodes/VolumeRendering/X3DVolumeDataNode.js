@@ -219,7 +219,6 @@ x3dom.registerNodeType(
                 "  float opacityFactor = 10.0;\n"+
                 "  float t_near;\n"+
                 "  float t_far;\n"+
-                "  if((ray_pos.x <= 1.0 && ray_pos.y <= 1.0 && ray_pos.z <= 1.0) || (ray_pos.x >= 0.0 && ray_pos.y >= 0.0 && ray_pos.z >= 0.0)){\n"+
                 "  for(float i = 0.0; i < Steps; i+=1.0)\n"+
                 "  {\n"+
                 "    value = cTexture3D(uVolData, ray_pos, numberOfSlices, slicesOverX, slicesOverY);\n"+
@@ -247,9 +246,8 @@ x3dom.registerNodeType(
                 }
                 shaderLoop +=
                 //Early ray termination and Break if the position is greater than <1, 1, 1>
-                "    if(accum.a >= 1.0 || ray_pos.x < 0.0 || ray_pos.y < 0.0 || ray_pos.z < 0.0 || ray_pos.x > 1.0 || ray_pos.y > 1.0 || ray_pos.z > 1.0)\n"+
+                "    if(ray_pos.x < 0.0 || ray_pos.y < 0.0 || ray_pos.z < 0.0 || ray_pos.x > 1.0 || ray_pos.y > 1.0 || ray_pos.z > 1.0 || accum.a >= 1.0 )\n"+
                 "      break;\n"+
-                "    }\n"+
                 "  }\n"+
                 "  gl_FragColor = accum;\n"+
                 "}";
