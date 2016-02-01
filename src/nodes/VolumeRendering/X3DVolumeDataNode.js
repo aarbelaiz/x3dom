@@ -62,7 +62,17 @@ x3dom.registerNodeType(
              * @field x3dom
              * @instance
              */
-            this.addField_SFBool(ctx, 'allowViewpointInside', true)
+            this.addField_SFBool(ctx, 'allowViewpointInside', true);
+
+            /**
+             * Set the number of steps per ray in the ray-casting. This will control the quality of the result.
+             * @var {x3dom.fields.SFFloat} steps
+             * @memberof x3dom.nodeTypes.X3DVolumeDataNode
+             * @initvalue 60.0
+             * @field x3dom
+             * @instance
+             */
+            this.addField_SFFloat(ctx, 'steps', 60.0);
 
             //Neccesary for counting the textures which are added on each style, number of textures can be variable
             this._textureID = 0;
