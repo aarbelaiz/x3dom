@@ -16,7 +16,7 @@ x3dom.registerNodeType(
     "VolumeData",
     "VolumeRendering",
     defineClass(x3dom.nodeTypes.X3DVolumeDataNode,
-        
+
         /**
          * Constructor for VolumeData
          * @constructs x3dom.nodeTypes.VolumeData
@@ -49,9 +49,10 @@ x3dom.registerNodeType(
             this.vrcSinglePassShaderFragment = new x3dom.nodeTypes.ShaderPart(ctx);
             this.vrcSinglePassShaderFieldBackCoord = new x3dom.nodeTypes.Field(ctx);
             this.vrcSinglePassShaderFieldVolData = new x3dom.nodeTypes.Field(ctx);
+            this.vrcSinglePassShaderFieldSceneDepthData = new x3dom.nodeTypes.Field(ctx);
             this.vrcSinglePassShaderFieldOffset = new x3dom.nodeTypes.Field(ctx);
             this.vrcSinglePassShaderFieldDimensions = new x3dom.nodeTypes.Field(ctx);
-        
+
         },
         {
             initializeValues: function() {
@@ -102,7 +103,7 @@ x3dom.registerNodeType(
             {
                 // uhhhh, manually build backend-graph scene-subtree,
                 // therefore, try to mimic depth-first parsing scheme
-                if (!this._cf.appearance.node) 
+                if (!this._cf.appearance.node)
                 {
                     var i;
 
@@ -114,10 +115,21 @@ x3dom.registerNodeType(
                     this.vrcVolumeTexture._vf.repeatT = false;
 
                     this.vrcMultiTexture._nameSpace = this._nameSpace;
-                    
+
                     this.vrcMultiTexture.addChild(this.vrcVolumeTexture, 'texture');
                     this.vrcVolumeTexture.nodeChanged();
-                    
+
+                    // create shortcut for rendered scene depth
+                    this.vrcSceneDepthTexture = this._cf.depthTexture.node;
+                    if (this.vrcSceneDepthTexture) {
+                      this.vrcSceneDepthTexture._vf.repeatS = false;
+                      this.vrcSceneDepthTexture._vf.repeatT = false;
+                      this.vrcSceneDepthTexture._nameSpace = this._nameSpace;
+
+                      this.vrcMultiTexture.addChild(this.vrcSceneDepthTexture, 'texture');
+                      this.vrcVolumeTexture.nodeChanged();
+                    }
+
                     // textures from styles
                     if (this._cf.renderStyle.node.textures) {
                         var styleTextures = this._cf.renderStyle.node.textures();
@@ -127,7 +139,7 @@ x3dom.registerNodeType(
                             this.vrcVolumeTexture.nodeChanged();
                         }
                     }
-                    
+
                     this._cf.appearance.node.addChild(this.vrcMultiTexture);
                     this.vrcMultiTexture.nodeChanged();
 
@@ -136,7 +148,7 @@ x3dom.registerNodeType(
 
                     // here goes the volume shader
                     this.vrcSinglePassShaderVertex._vf.type = 'vertex';
-                    this.vrcSinglePassShaderVertex._vf.url[0]=this.vertexShaderText(x3dom.isa(this._cf.renderStyle.node, x3dom.nodeTypes.RadarVolumeStyle));
+                    this.vrcSinglePassShaderVertex._vf.url[0]=this.vertexShaderText(x3dom.isa(this._cf.renderStyle.node, x3dom.nodeTypes.RadarVolumeStyle) || x3dom.isa(this._cf.renderStyle.node, x3dom.nodeTypes.MPRVolumeStyle));
 
                     this.vrcSinglePassShaderFragment._vf.type = 'fragment';
                     var shaderText = "";
@@ -152,20 +164,24 @@ x3dom.registerNodeType(
                     }else{
                         shaderText += this._cf.renderStyle.node.fragmentShaderText(
                             this.vrcVolumeTexture._vf.numberOfSlices,
-                            this.vrcVolumeTexture._vf.slicesOverX, 
+                            this.vrcVolumeTexture._vf.slicesOverX,
                             this.vrcVolumeTexture._vf.slicesOverY);
                     }
                     this.vrcSinglePassShaderFragment._vf.url[0]= shaderText;
 
                     this.vrcSinglePassShader.addChild(this.vrcSinglePassShaderVertex, 'parts');
                     this.vrcSinglePassShaderVertex.nodeChanged();
-                    
+
                     this.vrcSinglePassShader.addChild(this.vrcSinglePassShaderFragment, 'parts');
                     this.vrcSinglePassShaderFragment.nodeChanged();
 
                     this.vrcSinglePassShaderFieldVolData._vf.name = 'uVolData';
                     this.vrcSinglePassShaderFieldVolData._vf.type = 'SFInt32';
                     this.vrcSinglePassShaderFieldVolData._vf.value = this._textureID++;
+
+                    this.vrcSinglePassShaderFieldSceneDepthData._vf.name = 'uSceneDepthData';
+                    this.vrcSinglePassShaderFieldSceneDepthData._vf.type = 'SFInt32';
+                    this.vrcSinglePassShaderFieldSceneDepthData._vf.value = this._textureID++;
 
                     this.vrcSinglePassShaderFieldDimensions._vf.name = 'dimensions';
                     this.vrcSinglePassShaderFieldDimensions._vf.type = 'SFVec3f';
@@ -174,15 +190,18 @@ x3dom.registerNodeType(
                     this.vrcSinglePassShaderFieldOffset._vf.name = 'offset';
                     this.vrcSinglePassShaderFieldOffset._vf.type = 'SFVec3f';
                     this.vrcSinglePassShaderFieldOffset._vf.value = "0.01 0.01 0.01"; //Default initial value
-                    
+
                     this.vrcSinglePassShader.addChild(this.vrcSinglePassShaderFieldVolData, 'fields');
                     this.vrcSinglePassShaderFieldVolData.nodeChanged();
+
+                    this.vrcSinglePassShader.addChild(this.vrcSinglePassShaderFieldSceneDepthData, 'fields');
+                    this.vrcSinglePassShaderFieldSceneDepthData.nodeChanged();
 
                     this.vrcSinglePassShader.addChild(this.vrcSinglePassShaderFieldDimensions, 'fields');
                     this.vrcSinglePassShaderFieldDimensions.nodeChanged();
 
                     this.vrcSinglePassShader.addChild(this.vrcSinglePassShaderFieldOffset, 'fields');
- 
+
                     //Take volume texture size for the ComposableRenderStyles offset parameter
                     this.offsetInterval = window.setInterval((function(aTex, obj) {
                         return function() {
@@ -196,16 +215,16 @@ x3dom.registerNodeType(
                             }
                         }
                     })(this.vrcVolumeTexture, this), 1000);
-                    
+
                     var ShaderUniforms = this._cf.renderStyle.node.uniforms();
                     for (i = 0; i<ShaderUniforms.length; i++)
                     {
                         this.vrcSinglePassShader.addChild(ShaderUniforms[i], 'fields');
                     }
-                
+
                     this._cf.appearance.node.addChild(this.vrcSinglePassShader);
                     this.vrcSinglePassShader.nodeChanged();
-                    
+
                     this._cf.appearance.node.nodeChanged();
                 }
 

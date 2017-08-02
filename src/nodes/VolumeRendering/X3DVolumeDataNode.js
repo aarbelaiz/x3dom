@@ -16,7 +16,7 @@ x3dom.registerNodeType(
     "X3DVolumeDataNode",
     "VolumeRendering",
     defineClass(x3dom.nodeTypes.X3DShapeNode,   // changed inheritance!
-        
+
         /**
          * Constructor for X3DVolumeDataNode
          * @constructs x3dom.nodeTypes.X3DVolumeDataNode
@@ -25,7 +25,7 @@ x3dom.registerNodeType(
          * @status experimental
          * @extends x3dom.nodeTypes.X3DShapeNode
          * @param {Object} [ctx=null] - context object, containing initial settings like namespace
-         * @classdesc (Abstract) class for volume data. 
+         * @classdesc (Abstract) class for volume data.
          */
         function (ctx) {
             x3dom.nodeTypes.X3DVolumeDataNode.superClass.call(this, ctx);
@@ -53,6 +53,17 @@ x3dom.registerNodeType(
             //this.addField_MFNode('voxels', x3dom.nodeTypes.X3DTexture3DNode);
             //this.addField_SFBool(ctx, 'swapped', false);
             //this.addField_SFVec3f(ctx, 'sliceThickness', 1, 1, 1);
+
+            /**
+             * depthTexture holds the depth of the rendered scene.
+             * It will be use for early ray termination and correct blending with the scene.
+             * @var {x3dom.fields.SFNode} depthTexture
+             * @memberof x3dom.nodeTypes.X3DVolumeDataNode
+             * @initvalue x3dom.nodeTypes.RenderedTexture
+             * @field x3dom
+             * @instance
+             */
+            this.addField_SFNode('depthTexture', x3dom.nodeTypes.RenderedTexture);
 
             /**
              * Allow to locate the viewpoint inside the volume.
@@ -98,7 +109,7 @@ x3dom.registerNodeType(
 
             //Common vertex shader text for all volume data nodes
             vertexShaderText: function(needEyePosition){
-                var shader = 
+                var shader =
                 "attribute vec3 position;\n"+
                 "uniform vec3 dimensions;\n"+
                 "uniform mat4 modelViewProjectionMatrix;\n"+
@@ -115,7 +126,7 @@ x3dom.registerNodeType(
                 if(x3dom.nodeTypes.X3DLightNode.lightID>0 || (needEyePosition===true)){
                    shader += "  position_eye = modelViewMatrix * vec4(position, 1.0);\n";
                 }
-                shader += 
+                shader +=
                 "  pos = vec4((position/dimensions)+0.5, 1.0);\n"+
                 "  gl_Position = vertexPosition;\n"+
                 "}";
@@ -123,9 +134,11 @@ x3dom.registerNodeType(
             },
 
             defaultUniformsShaderText: function(numberOfSlices, slicesOverX, slicesOverY, needEyePosition){
-               var uniformsText = 
-                "uniform sampler2D uVolData;\n"+
-                "uniform vec3 dimensions;\n"+
+                var uniformsText = "uniform sampler2D uVolData;\n";
+                if(this._cf.depthTexture.node) {
+                  uniformsText += "uniform sampler2D uSceneDepthData;\n";
+                }
+                uniformsText += "uniform vec3 dimensions;\n"+
                 "uniform vec3 offset;\n"+
                 "uniform mat4 modelViewMatrix;\n"+
                 "uniform mat4 modelViewMatrixInverse;\n"+
@@ -228,7 +241,7 @@ x3dom.registerNodeType(
                     "  vec3 specular = vec3(0.0, 0.0, 0.0);\n"+
                     "  vec4 step_eye = modelViewMatrix * vec4(step_size, 0.0);\n"+
                     "  vec4 positionE = position_eye;\n"+
-                    "  float lightFactor = 1.0;\n"; 
+                    "  float lightFactor = 1.0;\n";
                 }else{
                     shaderLoop += "  float lightFactor = 1.2;\n";
                 }
